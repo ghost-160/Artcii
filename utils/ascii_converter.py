@@ -3,16 +3,19 @@ import html
 import numpy as np
 
 
-def pixel_to_ascii(pixel: int, charset: str) -> str:
+CINEMATIC_CHARSET = (
+    "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,\"^`'. "
+)
+
+
+def pixel_to_ascii(pixel: int, charset: str = None) -> str:
     if not charset:
-        charset = "@%#*+=-:. "
+        charset = CINEMATIC_CHARSET
 
     pixel = max(0, min(255, int(pixel)))
 
-    num_chars = len(charset)
-
-    # FIXED: reverse brightness mapping (Version 1 style)
-    index = int((255 - pixel) * (num_chars - 1) / 255)
+    # cinematic dense mapping
+    index = int((pixel / 255) * (len(charset) - 1))
 
     return charset[index]
 
@@ -21,9 +24,12 @@ def build_ascii_string(ascii_matrix: np.ndarray) -> str:
     return "\n".join("".join(row) for row in ascii_matrix)
 
 
-def frame_to_ascii(gray_frame: np.ndarray, charset: str) -> str:
+def frame_to_ascii(gray_frame: np.ndarray, charset: str = None) -> str:
     if gray_frame is None or gray_frame.size == 0:
         return ""
+
+    if not charset:
+        charset = CINEMATIC_CHARSET
 
     height, width = gray_frame.shape
     ascii_matrix = np.empty((height, width), dtype="U1")
@@ -45,7 +51,7 @@ def escape_html_char(char: str) -> str:
 def frame_to_colored_ascii(
     color_frame: np.ndarray,
     gray_frame: np.ndarray,
-    charset: str
+    charset: str = None
 ) -> str:
     if (
         color_frame is None
@@ -54,6 +60,9 @@ def frame_to_colored_ascii(
         or gray_frame.size == 0
     ):
         return ""
+
+    if not charset:
+        charset = CINEMATIC_CHARSET
 
     rgb_frame = cv2.cvtColor(
         color_frame,

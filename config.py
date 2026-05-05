@@ -5,7 +5,7 @@ ASCII_CHARSETS = {
     "keyboard": "asdfghjklqwertyuiopzxcvbnm1234567890",
 }
 
-DEFAULT_FRAME_WIDTH = 110
+DEFAULT_FRAME_WIDTH = 140
 DEFAULT_FPS = 4
 MAX_FRAME_QUEUE_SIZE = 10
 
@@ -18,8 +18,8 @@ SUPPORTED_THEMES = {
 
 SUPPORTED_DENSITY = {
     "low": 60,
-    "medium": 110,
-    "high": 140,
+    "medium": 140,
+    "high": 180,
 }
 
 DEFAULT_DENSITY = "basic"

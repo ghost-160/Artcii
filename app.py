@@ -31,8 +31,12 @@ from utils.image_processor import (
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "replace-this-secret")
 
-# Updated for Render deployment (removed async_mode="eventlet")
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Updated for Render deployment with gevent WebSocket support
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="gevent"
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -53,11 +57,16 @@ def is_allowed_file(filename: str) -> bool:
 
 def get_charset(data: dict) -> str:
     custom = data.get("customCharset", "")
+
     if custom and custom.strip():
         return custom.strip()
 
-    density_key = data.get("density", "medium")
-    return ASCII_CHARSETS.get(density_key, ASCII_CHARSETS["basic"])
+    density_key = data.get("density", "basic")
+
+    return ASCII_CHARSETS.get(
+        density_key,
+        ASCII_CHARSETS["basic"]
+    )
 
 
 def detect_face(image: np.ndarray):
@@ -76,7 +85,10 @@ def detect_face(image: np.ndarray):
     if len(faces) == 0:
         return None
 
-    x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
+    x, y, w, h = max(
+        faces,
+        key=lambda rect: rect[2] * rect[3]
+    )
 
     pad = int(max(w, h) * 0.2)
 
@@ -93,7 +105,7 @@ def build_artist_payload(
     width: int,
     charset: str,
     style: str,
-    color_mode: str,
+    color_mode: str
 ) -> dict:
     if color_mode not in COLOR_MODES:
         color_mode = "monochrome"
@@ -108,11 +120,15 @@ def build_artist_payload(
         gray_image = apply_sketch_effect(resized)
 
     if color_mode == "colored":
-        ascii_text = frame_to_ascii(gray_image, charset)
+        ascii_text = frame_to_ascii(
+            gray_image,
+            charset
+        )
+
         colored_html = frame_to_colored_ascii(
             resized,
             gray_image,
-            charset,
+            charset
         )
 
         return {
@@ -122,7 +138,10 @@ def build_artist_payload(
             "char_count": len(ascii_text),
         }
 
-    text_art = frame_to_ascii(gray_image, charset)
+    text_art = frame_to_ascii(
+        gray_image,
+        charset
+    )
 
     return {
         "ascii": text_art,
@@ -132,15 +151,42 @@ def build_artist_payload(
 
 
 def load_image_from_file(file_storage) -> np.ndarray:
-    image = Image.open(file_storage.stream).convert("RGB")
-    return cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
+    image = Image.open(
+        file_storage.stream
+    ).convert("RGB")
+
+    return cv2.cvtColor(
+        np.asarray(image),
+        cv2.COLOR_RGB2BGR
+    )
 
 
-def process_photo_data(image: np.ndarray, data: dict) -> dict:
-    render_mode = data.get("renderMode", "full_frame")
-    style_mode = data.get("styleMode", "normal")
-    color_mode = data.get("colorMode", "monochrome")
-    width = int(data.get("width", DEFAULT_FRAME_WIDTH))
+def process_photo_data(
+    image: np.ndarray,
+    data: dict
+) -> dict:
+    render_mode = data.get(
+        "renderMode",
+        "full_frame"
+    )
+
+    style_mode = data.get(
+        "styleMode",
+        "normal"
+    )
+
+    color_mode = data.get(
+        "colorMode",
+        "monochrome"
+    )
+
+    width = int(
+        data.get(
+            "width",
+            DEFAULT_FRAME_WIDTH
+        )
+    )
+
     charset = get_charset(data)
 
     if render_mode == "face_only":
@@ -173,7 +219,11 @@ def index():
 @app.route("/gallery")
 def gallery():
     artworks = get_artworks()
-    return render_template("gallery.html", artworks=artworks)
+
+    return render_template(
+        "gallery.html",
+        artworks=artworks
+    )
 
 
 @app.route("/upload-image", methods=["POST"])
@@ -181,36 +231,75 @@ def upload_image():
     file = request.files.get("image")
 
     if file is None or file.filename == "":
-        return jsonify({"error": "No image file provided."}), 400
+        return jsonify({
+            "error": "No image file provided."
+        }), 400
 
     if not is_allowed_file(file.filename):
-        return jsonify({"error": "Unsupported file type."}), 400
+        return jsonify({
+            "error": "Unsupported file type."
+        }), 400
 
     try:
         image = load_image_from_file(file)
-        payload = process_photo_data(image, request.form)
+
+        payload = process_photo_data(
+            image,
+            request.form
+        )
 
         return jsonify(payload)
 
     except Exception as exc:
-        logger.exception("Upload image processing failed")
-        return jsonify({"error": str(exc)}), 500
+        logger.exception(
+            "Upload image processing failed"
+        )
+
+        return jsonify({
+            "error": str(exc)
+        }), 500
 
 
 @app.route("/save-art", methods=["POST"])
 def save_art():
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(
+        silent=True
+    ) or {}
 
-    ascii_content = data.get("ascii_content", "")
+    ascii_content = data.get(
+        "ascii_content",
+        ""
+    )
 
     if not ascii_content.strip():
-        return jsonify({"error": "No ASCII content to save."}), 400
+        return jsonify({
+            "error": "No ASCII content to save."
+        }), 400
 
-    theme = data.get("theme", "default")
-    mode = data.get("mode", "full_frame")
-    style = data.get("style", "normal")
-    color_mode = data.get("color_mode", "monochrome")
-    charset = data.get("charset", "")
+    theme = data.get(
+        "theme",
+        "default"
+    )
+
+    mode = data.get(
+        "mode",
+        "full_frame"
+    )
+
+    style = data.get(
+        "style",
+        "normal"
+    )
+
+    color_mode = data.get(
+        "color_mode",
+        "monochrome"
+    )
+
+    charset = data.get(
+        "charset",
+        ""
+    )
 
     save_artwork(
         ascii_content=ascii_content,
@@ -221,7 +310,9 @@ def save_art():
         charset=charset,
     )
 
-    return jsonify({"success": True})
+    return jsonify({
+        "success": True
+    })
 
 
 @app.route("/delete-art", methods=["POST"])
@@ -229,26 +320,45 @@ def delete_art():
     art_id = request.form.get("art_id")
 
     if not art_id:
-        payload = request.get_json(silent=True)
-        art_id = payload.get("art_id") if payload else None
+        payload = request.get_json(
+            silent=True
+        )
+
+        art_id = payload.get(
+            "art_id"
+        ) if payload else None
 
     if not art_id:
-        return redirect(url_for("gallery"))
+        return redirect(
+            url_for("gallery")
+        )
 
     delete_artwork(art_id)
 
-    return redirect(url_for("gallery"))
+    return redirect(
+        url_for("gallery")
+    )
 
 
 @socketio.on("connect")
 def handle_connect():
-    logger.info("Client connected")
-    emit("status", {"message": "Connected to Artcii backend."})
+    logger.info(
+        "Client connected"
+    )
+
+    emit(
+        "status",
+        {
+            "message": "Connected to Artcii backend."
+        }
+    )
 
 
 @socketio.on("disconnect")
 def handle_disconnect():
-    logger.info("Client disconnected")
+    logger.info(
+        "Client disconnected"
+    )
 
 
 @socketio.on("process_frame")
@@ -257,17 +367,35 @@ def handle_process_frame(data):
         image_data = data.get("image")
 
         if not image_data:
-            raise ValueError("Missing image data")
+            raise ValueError(
+                "Missing image data"
+            )
 
-        image = decode_base64_image(image_data)
+        image = decode_base64_image(
+            image_data
+        )
 
-        payload = process_photo_data(image, data)
+        payload = process_photo_data(
+            image,
+            data
+        )
 
-        emit("ascii_frame", payload)
+        emit(
+            "ascii_frame",
+            payload
+        )
 
     except Exception as exc:
-        logger.exception("Error processing frame")
-        emit("processing_error", {"error": str(exc)})
+        logger.exception(
+            "Error processing frame"
+        )
+
+        emit(
+            "processing_error",
+            {
+                "error": str(exc)
+            }
+        )
 
 
 if __name__ == "__main__":
@@ -275,5 +403,5 @@ if __name__ == "__main__":
         app,
         host="127.0.0.1",
         port=5000,
-        debug=True,
+        debug=True
     )

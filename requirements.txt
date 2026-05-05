@@ -2,6 +2,7 @@ flask
 flask-socketio
 opencv-python
 numpy
-eventlet
 Pillow
 gunicorn
+gevent
+gevent-websocket

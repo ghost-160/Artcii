@@ -161,4 +161,6 @@ Artcii/
 
 ## Author
 
+[NOTE THAT ITS DEPLOYED ON RENDER(https://artcii-live.onrender.com) BUT FPS MIGHT BE LOW,BECAUSE I DONT HAVE MONEY]
+
 Ghost

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Artcii Gallery</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body class="theme-matrix">
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="brand-block">
+                <div class="logo-badge">ARTCII</div>
+                <div>
+                    <h1>Saved Gallery</h1>
+                    <p>Review and manage your archived ASCII masterpieces.</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <a class="nav-link" href="/">Back to Dashboard</a>
+            </div>
+        </header>
+
+        <main class="gallery-layout">
+            {% if artworks %}
+                <div class="gallery-grid">
+                    {% for art in artworks %}
+                        <article class="gallery-card">
+                            <div class="gallery-card-meta">
+                                <span><strong>Mode:</strong> {{ art.mode }}</span>
+                                <span><strong>Style:</strong> {{ art.style }}</span>
+                                <span><strong>Color:</strong> {{ art.color_mode }}</span>
+                                <span><strong>Saved:</strong> {{ art.created_at }}</span>
+                            </div>
+                            <pre class="gallery-ascii">{{ art.ascii_content }}</pre>
+                            <div class="gallery-actions">
+                                <a class="btn btn-primary download-art" data-id="{{ art.id }}" href="#">Download</a>
+                                <form method="POST" action="{{ url_for('delete_art') }}">
+                                    <input type="hidden" name="art_id" value="{{ art.id }}" />
+                                    <button type="submit" class="btn btn-secondary">Delete</button>
+                                </form>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>No saved artworks yet. Create some ASCII art and save it from the dashboard.</p>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+
+    <script>
+        document.querySelectorAll('.download-art').forEach((button) => {
+            button.addEventListener('click', (event) => {
+                event.preventDefault();
+                const card = event.target.closest('.gallery-card');
+                const content = card.querySelector('.gallery-ascii').textContent;
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(new Blob([content], { type: 'text/plain;charset=utf-8' }));
+                link.download = `artcii_art_${event.target.dataset.id}.txt`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        });
+    </script>
+</body>
+</html>

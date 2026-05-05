@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Artcii v2 Professional</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNa5Ii6fzJZmi0jW8gB8j+qLabsn+P/cmI0lD2VjTAodEgnJ4aiORZ7oGjsp8VYHGZCz0Lx5OQ+PLUlfcQddMw==" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+    <script src="/static/js/app.js" defer></script>
+</head>
+<body class="theme-matrix">
+    <div class="app-shell">
+        <header class="topbar">
+            <div class="brand-block">
+                <div class="logo-badge">ARTCII</div>
+                <div>
+                    <h1>Artcii v2 Professional</h1>
+                    <p>Live webcam ASCII, colored rendering, uploads, and gallery management.</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <span class="live-badge">LIVE</span>
+                <a class="nav-link" href="/gallery">Gallery</a>
+            </div>
+        </header>
+
+        <section class="dashboard-grid">
+            <article class="card control-card">
+                <h2>Camera Controls</h2>
+                <div class="button-row">
+                    <button id="startBtn" class="btn btn-primary">Start</button>
+                    <button id="stopBtn" class="btn btn-secondary" disabled>Stop</button>
+                    <button id="fullscreenBtn" class="btn btn-secondary">Fullscreen</button>
+                </div>
+                <div class="input-row">
+                    <label for="imageUpload">Upload Image</label>
+                    <input id="imageUpload" type="file" accept="image/png,image/jpeg,image/webp" />
+                    <button id="uploadBtn" class="btn btn-tertiary">Convert Upload</button>
+                </div>
+                <div id="uploadPreviewCard" class="preview-card hidden">
+                    <h3>Preview</h3>
+                    <img id="uploadPreview" alt="Uploaded preview" />
+                </div>
+            </article>
+
+            <article class="card render-card">
+                <h2>Rendering Controls</h2>
+                <label>
+                    Mode
+                    <select id="renderMode">
+                        <option value="full_frame">Full Frame</option>
+                        <option value="face_only">Face Only</option>
+                    </select>
+                </label>
+
+                <label>
+                    Style
+                    <select id="styleMode">
+                        <option value="normal">Normal</option>
+                        <option value="edge">Edge</option>
+                        <option value="sketch">Sketch</option>
+                    </select>
+                </label>
+
+                <label>
+                    Color Mode
+                    <select id="colorMode">
+                        <option value="monochrome">Monochrome</option>
+                        <option value="colored">Colored</option>
+                    </select>
+                </label>
+
+                <label>
+                    Resolution: <span id="resolutionValue">120</span>
+                    <input id="resolutionRange" type="range" min="60" max="180" value="120" step="10" />
+                </label>
+
+                <label>
+                    Custom ASCII Set
+                    <textarea id="customCharset" placeholder="@#$%" maxlength="120"></textarea>
+                </label>
+            </article>
+
+            <article class="card export-card">
+                <h2>Export & Save</h2>
+                <div class="button-row vertical">
+                    <button id="saveTxtBtn" class="btn btn-primary">Save TXT</button>
+                    <button id="saveGalleryBtn" class="btn btn-secondary">Save to Gallery</button>
+                    <button id="exportPngBtn" class="btn btn-tertiary">Export PNG</button>
+                </div>
+                <div class="doc-note">Shortcuts: R = Start, X = Stop, S = Save TXT, P = PNG, F = Fullscreen</div>
+            </article>
+
+            <article class="card stats-card">
+                <h2>Live Stats</h2>
+                <div class="stats-grid">
+                    <div><span>FPS</span><strong id="fpsDisplay">0</strong></div>
+                    <div><span>Resolution</span><strong id="resolutionDisplay">120</strong></div>
+                    <div><span>Process ms</span><strong id="processTimeDisplay">0</strong></div>
+                    <div><span>Chars</span><strong id="charCountDisplay">0</strong></div>
+                    <div class="full-span"><span>Mode</span><strong id="modeDisplay">Full Frame / Normal / Monochrome</strong></div>
+                </div>
+            </article>
+        </section>
+
+        <section class="output-panel">
+            <div class="output-header">
+                <h2>ASCII Output</h2>
+                <p class="output-description">Live output updates in real time. Colored mode preserves subject color values.</p>
+            </div>
+            <div class="ascii-output-area">
+                <pre id="asciiOutput" class="ascii-output" aria-live="polite">Press Start or upload an image to begin.</pre>
+            </div>
+        </section>
+
+        <footer class="status-bar">
+            <span id="statusIndicator">Ready</span>
+        </footer>
+    </div>
+
+    <video id="videoElement" autoplay muted playsinline hidden></video>
+    <canvas id="captureCanvas" hidden></canvas>
+</body>
+</html>

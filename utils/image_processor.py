@@ -9,7 +9,10 @@ def decode_base64_image(base64_string: str):
 
     image_data = base64.b64decode(base64_string)
 
-    np_arr = np.frombuffer(image_data, np.uint8)
+    np_arr = np.frombuffer(
+        image_data,
+        np.uint8
+    )
 
     image = cv2.imdecode(
         np_arr,
@@ -17,41 +20,46 @@ def decode_base64_image(base64_string: str):
     )
 
     if image is None:
-        raise ValueError("Unable to decode image data")
+        raise ValueError(
+            "Unable to decode image data"
+        )
 
     return image
 
 
 def convert_to_grayscale(image):
     if image is None:
-        raise ValueError("No image data provided")
+        raise ValueError(
+            "No image data provided"
+        )
 
     gray = cv2.cvtColor(
         image,
         cv2.COLOR_BGR2GRAY
     )
 
-    # cinematic contrast boost
+    # light contrast boost for better face details
     gray = cv2.equalizeHist(gray)
-
-    # smooth noise
-    gray = cv2.GaussianBlur(
-        gray,
-        (3, 3),
-        0
-    )
 
     return gray
 
 
 def resize_image(image, width):
     if image is None:
-        raise ValueError("No image provided for resize")
+        raise ValueError(
+            "No image provided for resize"
+        )
 
     height, original_width = image.shape[:2]
 
-    adjusted_height = int(
-        height * width / original_width * 0.5
+    adjusted_height = max(
+        1,
+        int(
+            height *
+            width /
+            original_width *
+            0.50
+        )
     )
 
     return cv2.resize(
@@ -62,15 +70,25 @@ def resize_image(image, width):
 
 
 def apply_edge_effect(image):
-    gray = convert_to_grayscale(image)
-
-    edges = cv2.Canny(
-        gray,
-        70,
-        140
+    gray = convert_to_grayscale(
+        image
     )
 
-    return cv2.bitwise_not(edges)
+    blurred = cv2.GaussianBlur(
+        gray,
+        (3, 3),
+        0
+    )
+
+    edges = cv2.Canny(
+        blurred,
+        80,
+        150
+    )
+
+    return cv2.bitwise_not(
+        edges
+    )
 
 
 def dodge_blend(base, blend):
@@ -82,9 +100,13 @@ def dodge_blend(base, blend):
 
 
 def apply_sketch_effect(image):
-    gray = convert_to_grayscale(image)
+    gray = convert_to_grayscale(
+        image
+    )
 
-    inverted = cv2.bitwise_not(gray)
+    inverted = cv2.bitwise_not(
+        gray
+    )
 
     blurred = cv2.GaussianBlur(
         inverted,

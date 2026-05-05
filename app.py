@@ -1,7 +1,5 @@
-import io
 import logging
 import os
-from datetime import datetime
 
 import cv2
 import numpy as np
@@ -29,20 +27,22 @@ from utils.image_processor import (
 )
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "replace-this-secret")
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    "replace-this-secret"
+)
 
-# Updated for Render deployment with gevent WebSocket support
 socketio = SocketIO(
     app,
-    cors_allowed_origins="*",
-    async_mode="gevent"
+    cors_allowed_origins="*"
 )
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    cv2.data.haarcascades +
+    "haarcascade_frontalface_default.xml"
 )
 
 init_db()
@@ -50,18 +50,25 @@ init_db()
 
 def is_allowed_file(filename: str) -> bool:
     return (
-        "." in filename
-        and filename.rsplit(".", 1)[1].lower() in ALLOWED_UPLOAD_EXTENSIONS
+        "." in filename and
+        filename.rsplit(".", 1)[1].lower()
+        in ALLOWED_UPLOAD_EXTENSIONS
     )
 
 
 def get_charset(data: dict) -> str:
-    custom = data.get("customCharset", "")
+    custom = data.get(
+        "customCharset",
+        ""
+    )
 
     if custom and custom.strip():
         return custom.strip()
 
-    density_key = data.get("density", "basic")
+    density_key = data.get(
+        "density",
+        "basic"
+    )
 
     return ASCII_CHARSETS.get(
         density_key,
@@ -79,7 +86,7 @@ def detect_face(image: np.ndarray):
         gray,
         scaleFactor=1.1,
         minNeighbors=6,
-        minSize=(80, 80),
+        minSize=(80, 80)
     )
 
     if len(faces) == 0:
@@ -90,12 +97,20 @@ def detect_face(image: np.ndarray):
         key=lambda rect: rect[2] * rect[3]
     )
 
-    pad = int(max(w, h) * 0.2)
+    # tighter crop
+    pad_x = int(w * 0.15)
+    pad_y = int(h * 0.20)
 
-    x1 = max(0, x - pad)
-    y1 = max(0, y - pad)
-    x2 = min(image.shape[1], x + w + pad)
-    y2 = min(image.shape[0], y + h + pad)
+    x1 = max(0, x - pad_x)
+    y1 = max(0, y - pad_y)
+    x2 = min(
+        image.shape[1],
+        x + w + pad_x
+    )
+    y2 = min(
+        image.shape[0],
+        y + h + pad_y
+    )
 
     return image[y1:y2, x1:x2]
 
@@ -107,17 +122,24 @@ def build_artist_payload(
     style: str,
     color_mode: str
 ) -> dict:
-    if color_mode not in COLOR_MODES:
-        color_mode = "monochrome"
+    resized = resize_image(
+        image,
+        width
+    )
 
-    resized = resize_image(image, width)
-    gray_image = convert_to_grayscale(resized)
+    gray_image = convert_to_grayscale(
+        resized
+    )
 
     if style == "edge":
-        gray_image = apply_edge_effect(resized)
+        gray_image = apply_edge_effect(
+            resized
+        )
 
     elif style == "sketch":
-        gray_image = apply_sketch_effect(resized)
+        gray_image = apply_sketch_effect(
+            resized
+        )
 
     if color_mode == "colored":
         ascii_text = frame_to_ascii(
@@ -135,7 +157,7 @@ def build_artist_payload(
             "ascii": colored_html,
             "ascii_text": ascii_text,
             "html": True,
-            "char_count": len(ascii_text),
+            "char_count": len(ascii_text)
         }
 
     text_art = frame_to_ascii(
@@ -146,7 +168,7 @@ def build_artist_payload(
     return {
         "ascii": text_art,
         "html": False,
-        "char_count": len(text_art),
+        "char_count": len(text_art)
     }
 
 
@@ -190,17 +212,17 @@ def process_photo_data(
     charset = get_charset(data)
 
     if render_mode == "face_only":
-        face_image = detect_face(image)
+        face = detect_face(image)
 
-        if face_image is not None:
-            image = face_image
+        if face is not None:
+            image = face
 
     return build_artist_payload(
         image=image,
         width=width,
         charset=charset,
         style=style_mode,
-        color_mode=color_mode,
+        color_mode=color_mode
     )
 
 
@@ -212,7 +234,7 @@ def index():
         style_modes=STYLE_MODES,
         color_modes=COLOR_MODES,
         themes=SUPPORTED_DENSITY,
-        densities=SUPPORTED_DENSITY,
+        densities=SUPPORTED_DENSITY
     )
 
 
@@ -276,38 +298,13 @@ def save_art():
             "error": "No ASCII content to save."
         }), 400
 
-    theme = data.get(
-        "theme",
-        "default"
-    )
-
-    mode = data.get(
-        "mode",
-        "full_frame"
-    )
-
-    style = data.get(
-        "style",
-        "normal"
-    )
-
-    color_mode = data.get(
-        "color_mode",
-        "monochrome"
-    )
-
-    charset = data.get(
-        "charset",
-        ""
-    )
-
     save_artwork(
         ascii_content=ascii_content,
-        theme=theme,
-        mode=mode,
-        style=style,
-        color_mode=color_mode,
-        charset=charset,
+        theme=data.get("theme", "default"),
+        mode=data.get("mode", "full_frame"),
+        style=data.get("style", "normal"),
+        color_mode=data.get("color_mode", "monochrome"),
+        charset=data.get("charset", "")
     )
 
     return jsonify({
@@ -342,10 +339,6 @@ def delete_art():
 
 @socketio.on("connect")
 def handle_connect():
-    logger.info(
-        "Client connected"
-    )
-
     emit(
         "status",
         {
@@ -354,22 +347,10 @@ def handle_connect():
     )
 
 
-@socketio.on("disconnect")
-def handle_disconnect():
-    logger.info(
-        "Client disconnected"
-    )
-
-
 @socketio.on("process_frame")
 def handle_process_frame(data):
     try:
         image_data = data.get("image")
-
-        if not image_data:
-            raise ValueError(
-                "Missing image data"
-            )
 
         image = decode_base64_image(
             image_data
@@ -386,10 +367,6 @@ def handle_process_frame(data):
         )
 
     except Exception as exc:
-        logger.exception(
-            "Error processing frame"
-        )
-
         emit(
             "processing_error",
             {

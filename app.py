@@ -30,7 +30,9 @@ from utils.image_processor import (
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "replace-this-secret")
-socketio = SocketIO(app, async_mode="eventlet", cors_allowed_origins="*")
+
+# Updated for Render deployment (removed async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,6 +40,7 @@ logger = logging.getLogger(__name__)
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
+
 init_db()
 
 
@@ -54,31 +57,44 @@ def get_charset(data: dict) -> str:
         return custom.strip()
 
     density_key = data.get("density", "medium")
-    return ASCII_CHARSETS.get(density_key, ASCII_CHARSETS["detailed"])
+    return ASCII_CHARSETS.get(density_key, ASCII_CHARSETS["basic"])
 
 
-def detect_face(image: np.ndarray) -> np.ndarray | None:
+def detect_face(image: np.ndarray):
     if image is None:
         return None
 
     gray = convert_to_grayscale(image)
+
     faces = face_cascade.detectMultiScale(
-        gray, scaleFactor=1.1, minNeighbors=6, minSize=(80, 80)
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=6,
+        minSize=(80, 80),
     )
 
     if len(faces) == 0:
         return None
 
     x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
+
     pad = int(max(w, h) * 0.2)
+
     x1 = max(0, x - pad)
     y1 = max(0, y - pad)
     x2 = min(image.shape[1], x + w + pad)
     y2 = min(image.shape[0], y + h + pad)
+
     return image[y1:y2, x1:x2]
 
 
-def build_artist_payload(image: np.ndarray, width: int, charset: str, style: str, color_mode: str) -> dict:
+def build_artist_payload(
+    image: np.ndarray,
+    width: int,
+    charset: str,
+    style: str,
+    color_mode: str,
+) -> dict:
     if color_mode not in COLOR_MODES:
         color_mode = "monochrome"
 
@@ -87,20 +103,32 @@ def build_artist_payload(image: np.ndarray, width: int, charset: str, style: str
 
     if style == "edge":
         gray_image = apply_edge_effect(resized)
+
     elif style == "sketch":
         gray_image = apply_sketch_effect(resized)
 
     if color_mode == "colored":
-        colored_html = frame_to_colored_ascii(resized, gray_image, charset)
+        ascii_text = frame_to_ascii(gray_image, charset)
+        colored_html = frame_to_colored_ascii(
+            resized,
+            gray_image,
+            charset,
+        )
+
         return {
             "ascii": colored_html,
-            "ascii_text": frame_to_ascii(gray_image, charset),
+            "ascii_text": ascii_text,
             "html": True,
-            "char_count": len(frame_to_ascii(gray_image, charset)),
+            "char_count": len(ascii_text),
         }
 
     text_art = frame_to_ascii(gray_image, charset)
-    return {"ascii": text_art, "html": False, "char_count": len(text_art)}
+
+    return {
+        "ascii": text_art,
+        "html": False,
+        "char_count": len(text_art),
+    }
 
 
 def load_image_from_file(file_storage) -> np.ndarray:
@@ -117,9 +145,17 @@ def process_photo_data(image: np.ndarray, data: dict) -> dict:
 
     if render_mode == "face_only":
         face_image = detect_face(image)
-        image = face_image if face_image is not None else image
 
-    return build_artist_payload(image, width, charset, style_mode, color_mode)
+        if face_image is not None:
+            image = face_image
+
+    return build_artist_payload(
+        image=image,
+        width=width,
+        charset=charset,
+        style=style_mode,
+        color_mode=color_mode,
+    )
 
 
 @app.route("/")
@@ -143,6 +179,7 @@ def gallery():
 @app.route("/upload-image", methods=["POST"])
 def upload_image():
     file = request.files.get("image")
+
     if file is None or file.filename == "":
         return jsonify({"error": "No image file provided."}), 400
 
@@ -152,7 +189,9 @@ def upload_image():
     try:
         image = load_image_from_file(file)
         payload = process_photo_data(image, request.form)
+
         return jsonify(payload)
+
     except Exception as exc:
         logger.exception("Upload image processing failed")
         return jsonify({"error": str(exc)}), 500
@@ -161,7 +200,9 @@ def upload_image():
 @app.route("/save-art", methods=["POST"])
 def save_art():
     data = request.get_json(silent=True) or {}
+
     ascii_content = data.get("ascii_content", "")
+
     if not ascii_content.strip():
         return jsonify({"error": "No ASCII content to save."}), 400
 
@@ -179,12 +220,14 @@ def save_art():
         color_mode=color_mode,
         charset=charset,
     )
+
     return jsonify({"success": True})
 
 
 @app.route("/delete-art", methods=["POST"])
 def delete_art():
     art_id = request.form.get("art_id")
+
     if not art_id:
         payload = request.get_json(silent=True)
         art_id = payload.get("art_id") if payload else None
@@ -193,6 +236,7 @@ def delete_art():
         return redirect(url_for("gallery"))
 
     delete_artwork(art_id)
+
     return redirect(url_for("gallery"))
 
 
@@ -211,15 +255,25 @@ def handle_disconnect():
 def handle_process_frame(data):
     try:
         image_data = data.get("image")
+
         if not image_data:
             raise ValueError("Missing image data")
 
-        payload = process_photo_data(decode_base64_image(image_data), data)
+        image = decode_base64_image(image_data)
+
+        payload = process_photo_data(image, data)
+
         emit("ascii_frame", payload)
+
     except Exception as exc:
         logger.exception("Error processing frame")
         emit("processing_error", {"error": str(exc)})
 
 
 if __name__ == "__main__":
-    socketio.run(app, host="127.0.0.1", port=5000, debug=True)
+    socketio.run(
+        app,
+        host="127.0.0.1",
+        port=5000,
+        debug=True,
+    )

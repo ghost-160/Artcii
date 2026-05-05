@@ -150,7 +150,7 @@ function sendFrame() {
     ctx.restore();
 
     // JPEG compression for speed
-    const imageData = canvas.toDataURL("image/jpeg", 0.4);
+    const imageData = canvas.toDataURL("image/jpeg", 0.75);
 
     awaitingResponse = true;
     currentProcessingStart = performance.now();
@@ -182,7 +182,7 @@ function startStreaming() {
 
             captureInterval = setInterval(
                 sendFrame,
-                250
+                180
             );
         })
         .catch((error) => {

@@ -58,13 +58,13 @@ def resize_image(image, width):
 
     image = crop_black_margins(image)
     height, original_width = image.shape[:2]
-    adjusted_height = max(1, int(height * width / original_width * 0.5))
+    adjusted_height = max(1, int(height * width / original_width * 0.55))
     return cv2.resize(image, (width, adjusted_height), interpolation=cv2.INTER_AREA)
 
 
 def apply_edge_effect(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
     edges = cv2.Canny(blurred, 80, 150)
     return cv2.bitwise_not(edges)
 
